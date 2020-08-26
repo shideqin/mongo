@@ -1,7 +1,6 @@
 package mongo
 
 import (
-	"log"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -11,11 +10,11 @@ import (
 var (
 	//ErrNotFound 数据没有找到
 	ErrNotFound = mgo.ErrNotFound
-	//ErrCursor 游标错误
-	ErrCursor = mgo.ErrCursor
+	//connErr 连接错误
+	connErr error
 )
 
-//M 自定义bason类型
+//M 自定义bson类型
 type M bson.M
 
 //Sort 自定义排序类型
@@ -33,16 +32,15 @@ type Client struct {
 func Conn(url string) *Client {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("mongodb recover in", r)
+			connErr = r.(error)
 		}
 	}()
 	//[mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
 	session, err := mgo.Dial(url)
 	if err != nil {
-		session.Close()
-		panic("mongodb conn in" + err.Error())
+		panic(err)
 	}
-
+	connErr = nil
 	session.SetSocketTimeout(24 * time.Hour)
 
 	// Optional. Switch the session to a monotonic behavior.
@@ -50,6 +48,11 @@ func Conn(url string) *Client {
 	return &Client{
 		session: session,
 	}
+}
+
+//Ping 监测数据库连接
+func Ping() error {
+	return connErr
 }
 
 //NewObjectID 返回一个新的唯一ObjectId
@@ -69,6 +72,9 @@ func ObjectIDHex(id string) ObjectID {
 
 //GetRow 返回一行数据
 func (c *Client) GetRow(database, collection string, query M, result interface{}) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -78,6 +84,9 @@ func (c *Client) GetRow(database, collection string, query M, result interface{}
 
 //GetResult 返回多行结果集
 func (c *Client) GetResult(database, collection string, query M, fields M, options M, result interface{}) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -105,6 +114,9 @@ func (c *Client) GetResult(database, collection string, query M, fields M, optio
 
 //GetCount 返回统计条数
 func (c *Client) GetCount(database, collection string, query M) (int, error) {
+	if connErr != nil {
+		return 0, connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -114,6 +126,9 @@ func (c *Client) GetCount(database, collection string, query M) (int, error) {
 
 //Insert 插入数据
 func (c *Client) Insert(database, collection string, docs ...interface{}) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -122,6 +137,9 @@ func (c *Client) Insert(database, collection string, docs ...interface{}) error 
 
 //Update 更新数据,不存在报ErrNotFound
 func (c *Client) Update(database, collection string, selector M, update M) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -130,6 +148,9 @@ func (c *Client) Update(database, collection string, selector M, update M) error
 
 //UpdateAll 批量更新数据,不存在报ErrNotFound
 func (c *Client) UpdateAll(database, collection string, selector M, update M) (map[string]interface{}, error) {
+	if connErr != nil {
+		return map[string]interface{}{}, connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -142,6 +163,9 @@ func (c *Client) UpdateAll(database, collection string, selector M, update M) (m
 
 //Upsert 更新数据,不存在会新插入数据
 func (c *Client) Upsert(database, collection string, selector M, update M) (map[string]interface{}, error) {
+	if connErr != nil {
+		return map[string]interface{}{}, connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -154,6 +178,9 @@ func (c *Client) Upsert(database, collection string, selector M, update M) (map[
 
 //Remove 删除数据
 func (c *Client) Remove(database, collection string, selector M) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -162,6 +189,9 @@ func (c *Client) Remove(database, collection string, selector M) error {
 
 //RemoveAll 批量删除数据
 func (c *Client) RemoveAll(database, collection string, selector M) (int, error) {
+	if connErr != nil {
+		return 0, connErr
+	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
@@ -175,6 +205,9 @@ func (c *Client) RemoveAll(database, collection string, selector M) (int, error)
 
 //FindAndModify 查找并修改数据
 func (c *Client) FindAndModify(database, collection string, selector M, update M, upsert bool, result interface{}) (int, error) {
+	if connErr != nil {
+		return 0, connErr
+	}
 	session := c.session.Copy()
 	defer func() {
 		if r := recover(); r != nil {
@@ -193,6 +226,9 @@ func (c *Client) FindAndModify(database, collection string, selector M, update M
 
 //FindAndRemove 查找并删除数据
 func (c *Client) FindAndRemove(database, collection string, selector M, result interface{}) (int, error) {
+	if connErr != nil {
+		return 0, connErr
+	}
 	session := c.session.Copy()
 	defer func() {
 		if r := recover(); r != nil {
@@ -211,6 +247,9 @@ func (c *Client) FindAndRemove(database, collection string, selector M, result i
 
 //GetPipeRow 使用管道进行聚合计算并返回一行数据
 func (c *Client) GetPipeRow(database, collection string, pipeline []M, result *M) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer func() {
 		if r := recover(); r != nil {
@@ -223,6 +262,9 @@ func (c *Client) GetPipeRow(database, collection string, pipeline []M, result *M
 
 //GetPipeResult 使用管道进行聚合计算并返回多行结果集
 func (c *Client) GetPipeResult(database, collection string, pipeline []M, result *[]M) error {
+	if connErr != nil {
+		return connErr
+	}
 	session := c.session.Copy()
 	defer func() {
 		if r := recover(); r != nil {
