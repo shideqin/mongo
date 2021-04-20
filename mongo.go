@@ -15,13 +15,13 @@ var (
 )
 
 //M 自定义bson类型
-type M bson.M
+type M = bson.M
 
 //Sort 自定义排序类型
 type Sort []string
 
 //ObjectID 自定义ObjectID类型
-type ObjectID bson.ObjectId
+type ObjectID = bson.ObjectId
 
 //Client mongodb连接结构体
 type Client struct {
@@ -57,12 +57,12 @@ func Ping() error {
 
 //NewObjectID 返回一个新的唯一ObjectId
 func NewObjectID() ObjectID {
-	return ObjectID(bson.NewObjectId())
+	return bson.NewObjectId()
 }
 
 //Hex 返回ObjectId的十六进制
-func Hex(id ObjectID) string {
-	return bson.ObjectId(id).Hex()
+func Hex(oid ObjectID) string {
+	return oid.Hex()
 }
 
 //IsObjectIdHex 返回ObjectId是否为ObjectId的有效十六进制
@@ -71,8 +71,8 @@ func IsObjectIdHex(s string) bool {
 }
 
 //ObjectIDHex 将id转成十六进制表示返回ObjectId
-func ObjectIDHex(id string) ObjectID {
-	return ObjectID(bson.ObjectIdHex(id))
+func ObjectIDHex(s string) ObjectID {
+	return bson.ObjectIdHex(s)
 }
 
 //GetRow 返回一行数据
