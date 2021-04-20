@@ -21,7 +21,7 @@ type M bson.M
 type Sort []string
 
 //ObjectID 自定义ObjectID类型
-type ObjectID interface{}
+type ObjectID bson.ObjectId
 
 //Client mongodb连接结构体
 type Client struct {
@@ -57,17 +57,22 @@ func Ping() error {
 
 //NewObjectID 返回一个新的唯一ObjectId
 func NewObjectID() ObjectID {
-	return bson.NewObjectId()
+	return ObjectID(bson.NewObjectId())
 }
 
-//Hex 返回ObjectId的十六进制表示
+//Hex 返回ObjectId的十六进制
 func Hex(id ObjectID) string {
-	return id.(bson.ObjectId).Hex()
+	return bson.ObjectId(id).Hex()
+}
+
+//IsObjectIdHex 返回ObjectId是否为ObjectId的有效十六进制
+func IsObjectIdHex(s string) bool {
+	return bson.IsObjectIdHex(s)
 }
 
 //ObjectIDHex 将id转成十六进制表示返回ObjectId
 func ObjectIDHex(id string) ObjectID {
-	return bson.ObjectIdHex(id)
+	return ObjectID(bson.ObjectIdHex(id))
 }
 
 //GetRow 返回一行数据
@@ -210,8 +215,6 @@ func (c *Client) FindAndModify(database, collection string, selector M, update M
 	}
 	session := c.session.Copy()
 	defer func() {
-		if r := recover(); r != nil {
-		}
 		session.Close()
 	}()
 	change := mgo.Change{Update: update, Upsert: upsert, ReturnNew: true}
@@ -231,8 +234,6 @@ func (c *Client) FindAndRemove(database, collection string, selector M, result i
 	}
 	session := c.session.Copy()
 	defer func() {
-		if r := recover(); r != nil {
-		}
 		session.Close()
 	}()
 	change := mgo.Change{Remove: true}
@@ -252,8 +253,6 @@ func (c *Client) GetPipeRow(database, collection string, pipeline []M, result *M
 	}
 	session := c.session.Copy()
 	defer func() {
-		if r := recover(); r != nil {
-		}
 		session.Close()
 	}()
 	conn := session.DB(database).C(collection)
@@ -267,8 +266,6 @@ func (c *Client) GetPipeResult(database, collection string, pipeline []M, result
 	}
 	session := c.session.Copy()
 	defer func() {
-		if r := recover(); r != nil {
-		}
 		session.Close()
 	}()
 	conn := session.DB(database).C(collection)

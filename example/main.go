@@ -23,6 +23,10 @@ func main() {
 	hexID := mongo.Hex(objectID)
 	fmt.Println(hexID)
 
+	//是否为ObjectId的有效十六进制
+	isObject := mongo.IsObjectIdHex(hexID)
+	fmt.Println(isObject)
+
 	//16进制转成objectID
 	newObjectID := mongo.ObjectIDHex(hexID)
 	fmt.Println(newObjectID)
