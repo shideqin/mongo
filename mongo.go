@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -33,19 +34,20 @@ type Client struct {
 }
 
 //Conn 连接mongodb
-func Conn(url string) *Client {
-	cli := &Client{}
+func Conn(urlAddr string) *Client {
 	//[mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
-	session, err := mgo.Dial(url)
+	cli := &Client{}
+	u, _ := url.Parse(urlAddr)
+	session, err := mgo.Dial(urlAddr)
 	if err != nil {
-		cli.connErr = fmt.Errorf("host: %s error: %s", url, err.Error())
+		cli.connErr = fmt.Errorf("host: %s error: %s", u.Host, err.Error())
 		return cli
 	}
 	session.SetSocketTimeout(24 * time.Hour)
 
 	// Optional. Switch the session to a monotonic behavior.
 	//session.SetMode(mgo.Monotonic, true)
-	cli.host = url
+	cli.host = u.Host
 	cli.session = session
 	return cli
 }
@@ -75,7 +77,9 @@ func (c *Client) Ping() error {
 	if c.connErr != nil {
 		return c.connErr
 	}
-	err := c.session.Ping()
+	session := c.session.Copy()
+	defer session.Close()
+	err := session.Ping()
 	if err != nil {
 		c.connErr = fmt.Errorf("host: %s error: %s", c.host, err.Error())
 	}
