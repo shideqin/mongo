@@ -37,10 +37,14 @@ type Client struct {
 func Conn(urlAddr string) *Client {
 	//[mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
 	cli := &Client{}
-	u, _ := url.Parse(urlAddr)
+	host := urlAddr
+	u, err := url.Parse(urlAddr)
+	if err == nil {
+		host = u.Host
+	}
 	session, err := mgo.Dial(urlAddr)
 	if err != nil {
-		cli.connErr = fmt.Errorf("host: %s error: %s", u.Host, err.Error())
+		cli.connErr = fmt.Errorf("host: %s error: %s", host, err.Error())
 		return cli
 	}
 	session.SetSocketTimeout(24 * time.Hour)
