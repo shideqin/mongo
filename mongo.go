@@ -2,7 +2,7 @@ package mongo
 
 import (
 	"fmt"
-	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -37,10 +37,10 @@ type Client struct {
 func Conn(urlAddr string) *Client {
 	//[mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
 	cli := &Client{}
-	host := urlAddr
-	u, err := url.Parse(urlAddr)
-	if err == nil {
-		host = u.Host
+	match := regexp.MustCompile(`mongodb://(.*@)?(.*)/`).FindStringSubmatch(urlAddr)
+	var host string
+	if len(match) > 2 {
+		host = match[2]
 	}
 	session, err := mgo.Dial(urlAddr)
 	if err != nil {
@@ -51,7 +51,7 @@ func Conn(urlAddr string) *Client {
 
 	// Optional. Switch the session to a monotonic behavior.
 	//session.SetMode(mgo.Monotonic, true)
-	cli.host = u.Host
+	cli.host = host
 	cli.session = session
 	return cli
 }
