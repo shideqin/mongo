@@ -14,26 +14,26 @@ var (
 	ErrNotFound = mgo.ErrNotFound
 )
 
-//M 自定义bson类型
+// M 自定义bson类型
 type M = bson.M
 
-//D 自定义bson类型
+// D 自定义bson类型
 type D bson.D
 
-//Sort 自定义排序类型
+// Sort 自定义排序类型
 type Sort []string
 
-//ObjectID 自定义ObjectID类型
+// ObjectID 自定义ObjectID类型
 type ObjectID = bson.ObjectId
 
-//Client mongodb连接结构体
+// Client mongodb连接结构体
 type Client struct {
 	host    string
 	session *mgo.Session
 	connErr error
 }
 
-//Conn 连接mongodb
+// Conn 连接mongodb
 func Conn(urlAddr string) *Client {
 	//[mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
 	cli := &Client{}
@@ -56,27 +56,27 @@ func Conn(urlAddr string) *Client {
 	return cli
 }
 
-//NewObjectID 返回一个新的唯一ObjectId
+// NewObjectID 返回一个新的唯一ObjectId
 func NewObjectID() ObjectID {
 	return bson.NewObjectId()
 }
 
-//Hex 返回ObjectId的十六进制
+// Hex 返回ObjectId的十六进制
 func Hex(oid ObjectID) string {
 	return oid.Hex()
 }
 
-//IsObjectIdHex 返回ObjectId是否为ObjectId的有效十六进制
+// IsObjectIdHex 返回ObjectId是否为ObjectId的有效十六进制
 func IsObjectIdHex(s string) bool {
 	return bson.IsObjectIdHex(s)
 }
 
-//ObjectIDHex 将id转成十六进制表示返回ObjectId
+// ObjectIDHex 将id转成十六进制表示返回ObjectId
 func ObjectIDHex(s string) ObjectID {
 	return bson.ObjectIdHex(s)
 }
 
-//Ping 监测数据库连接
+// Ping 监测数据库连接
 func (c *Client) Ping() error {
 	if c.connErr != nil {
 		return c.connErr
@@ -90,20 +90,26 @@ func (c *Client) Ping() error {
 	return c.connErr
 }
 
-//GetRow 返回一行数据
-func (c *Client) GetRow(database, collection string, query M, result interface{}) error {
+// GetRow 返回一行数据
+func (c *Client) GetRow(database, collection string, query, options M, result interface{}) error {
 	if c.connErr != nil {
 		return c.connErr
 	}
 	session := c.session.Copy()
 	defer session.Close()
 	conn := session.DB(database).C(collection)
-	//query MongoDB
-	return conn.Find(query).One(result)
+	find := conn.Find(query)
+	//排序
+	if options["Sort"] != "" {
+		if sort, ok := options["Sort"].(Sort); ok {
+			find.Sort(sort...)
+		}
+	}
+	return find.One(result)
 }
 
-//GetResult 返回多行结果集
-func (c *Client) GetResult(database, collection string, query M, fields M, options M, result interface{}) error {
+// GetResult 返回多行结果集
+func (c *Client) GetResult(database, collection string, query, fields, options M, result interface{}) error {
 	if c.connErr != nil {
 		return c.connErr
 	}
@@ -132,7 +138,7 @@ func (c *Client) GetResult(database, collection string, query M, fields M, optio
 	return find.All(result)
 }
 
-//GetCount 返回统计条数
+// GetCount 返回统计条数
 func (c *Client) GetCount(database, collection string, query M) (int, error) {
 	if c.connErr != nil {
 		return 0, c.connErr
@@ -144,7 +150,7 @@ func (c *Client) GetCount(database, collection string, query M) (int, error) {
 	return conn.Find(query).Count()
 }
 
-//Insert 插入数据
+// Insert 插入数据
 func (c *Client) Insert(database, collection string, docs ...interface{}) error {
 	if c.connErr != nil {
 		return c.connErr
@@ -155,8 +161,8 @@ func (c *Client) Insert(database, collection string, docs ...interface{}) error 
 	return conn.Insert(docs...)
 }
 
-//Update 更新数据,不存在报ErrNotFound
-func (c *Client) Update(database, collection string, selector M, update M) error {
+// Update 更新数据,不存在报ErrNotFound
+func (c *Client) Update(database, collection string, selector, update M) error {
 	if c.connErr != nil {
 		return c.connErr
 	}
@@ -166,8 +172,8 @@ func (c *Client) Update(database, collection string, selector M, update M) error
 	return conn.Update(selector, update)
 }
 
-//UpdateAll 批量更新数据,不存在报ErrNotFound
-func (c *Client) UpdateAll(database, collection string, selector M, update M) (map[string]interface{}, error) {
+// UpdateAll 批量更新数据,不存在报ErrNotFound
+func (c *Client) UpdateAll(database, collection string, selector, update M) (map[string]interface{}, error) {
 	if c.connErr != nil {
 		return map[string]interface{}{}, c.connErr
 	}
@@ -181,8 +187,8 @@ func (c *Client) UpdateAll(database, collection string, selector M, update M) (m
 	return map[string]interface{}{"Matched": info.Matched, "Updated": info.Updated, "UpsertedId": info.UpsertedId}, nil
 }
 
-//Upsert 更新数据,不存在会新插入数据
-func (c *Client) Upsert(database, collection string, selector M, update M) (map[string]interface{}, error) {
+// Upsert 更新数据,不存在会新插入数据
+func (c *Client) Upsert(database, collection string, selector, update M) (map[string]interface{}, error) {
 	if c.connErr != nil {
 		return map[string]interface{}{}, c.connErr
 	}
@@ -196,7 +202,7 @@ func (c *Client) Upsert(database, collection string, selector M, update M) (map[
 	return map[string]interface{}{"Matched": info.Matched, "Updated": info.Updated, "UpsertedId": info.UpsertedId}, nil
 }
 
-//Remove 删除数据
+// Remove 删除数据
 func (c *Client) Remove(database, collection string, selector M) error {
 	if c.connErr != nil {
 		return c.connErr
@@ -207,7 +213,7 @@ func (c *Client) Remove(database, collection string, selector M) error {
 	return conn.Remove(selector)
 }
 
-//RemoveAll 批量删除数据
+// RemoveAll 批量删除数据
 func (c *Client) RemoveAll(database, collection string, selector M) (int, error) {
 	if c.connErr != nil {
 		return 0, c.connErr
@@ -223,8 +229,8 @@ func (c *Client) RemoveAll(database, collection string, selector M) (int, error)
 	return removed, err
 }
 
-//FindAndModify 查找并修改数据
-func (c *Client) FindAndModify(database, collection string, selector M, update M, upsert bool, result interface{}) (int, error) {
+// FindAndModify 查找并修改数据
+func (c *Client) FindAndModify(database, collection string, selector, update M, upsert bool, result interface{}) (int, error) {
 	if c.connErr != nil {
 		return 0, c.connErr
 	}
@@ -242,7 +248,7 @@ func (c *Client) FindAndModify(database, collection string, selector M, update M
 	return updated, err
 }
 
-//FindAndRemove 查找并删除数据
+// FindAndRemove 查找并删除数据
 func (c *Client) FindAndRemove(database, collection string, selector M, result interface{}) (int, error) {
 	if c.connErr != nil {
 		return 0, c.connErr
@@ -261,7 +267,7 @@ func (c *Client) FindAndRemove(database, collection string, selector M, result i
 	return removed, err
 }
 
-//GetPipeRow 使用管道进行聚合计算并返回一行数据
+// GetPipeRow 使用管道进行聚合计算并返回一行数据
 func (c *Client) GetPipeRow(database, collection string, pipeline []M, result *M) error {
 	if c.connErr != nil {
 		return c.connErr
@@ -274,7 +280,7 @@ func (c *Client) GetPipeRow(database, collection string, pipeline []M, result *M
 	return conn.Pipe(pipeline).One(result)
 }
 
-//GetPipeResult 使用管道进行聚合计算并返回多行结果集
+// GetPipeResult 使用管道进行聚合计算并返回多行结果集
 func (c *Client) GetPipeResult(database, collection string, pipeline []M, result *[]M) error {
 	if c.connErr != nil {
 		return c.connErr
